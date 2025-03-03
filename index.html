@@ -1,0 +1,219 @@
+><!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tank Game</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+
+        canvas {
+            border: 1px solid black;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            display: flex;
+            justify-content: center;
+            width: 100%;
+        }
+
+        .button {
+            width: 50px;
+            height: 50px;
+            margin: 0 10px;
+            background-color: #ccc;
+            border: none;
+            border-radius: 50%;
+            font-size: 24px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <div class="controls">
+        <button class="button" id="leftButton">←</button>
+        <button class="button" id="rightButton">→</button>
+        <button class="button" id="fireButton">⎵</button>
+    </div>
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        const tankWidth = 50;
+        const tankHeight = 50;
+        let tankX = canvas.width / 2 - tankWidth / 2;
+        let tankY = canvas.height - tankHeight - 10;
+        let tankSpeed = 10; // زيادة سرعة الدبابة
+
+        const bulletWidth = 5;
+        const bulletHeight = 10;
+        let bullets = [];
+        let bulletSpeed = 7;
+
+        const targetWidth = 50;
+        const targetHeight = 50;
+        let targets = [];
+        let targetSpeed = 2;
+
+        let lives = 3; // عدد الفرص المتبقية
+        const baseWidth = 100;
+        const baseHeight = 50;
+        const baseX = canvas.width / 2 - baseWidth / 2;
+        const baseY = canvas.height - baseHeight;
+
+        let keys = {};
+
+        function drawTank() {
+            ctx.fillStyle = "green";
+            ctx.fillRect(tankX, tankY, tankWidth, tankHeight);
+        }
+
+        function drawBullets() {
+            ctx.fillStyle = "red";
+            bullets.forEach((bullet, index) => {
+                ctx.fillRect(bullet.x, bullet.y, bulletWidth, bulletHeight);
+                bullet.y -= bulletSpeed;
+
+                if (bullet.y < 0) {
+                    bullets.splice(index, 1);
+                }
+            });
+        }
+
+        function drawTargets() {
+            ctx.fillStyle = "blue";
+            targets.forEach((target, index) => {
+                ctx.fillRect(target.x, target.y, targetWidth, targetHeight);
+                target.y += targetSpeed;
+
+                if (target.y > canvas.height) {
+                    targets.splice(index, 1);
+                    lives--; // تقليل عدد الفرص عند وصول الهدف إلى الأسفل
+                    if (lives === 0) {
+                        alert("Game Over");
+                        document.location.reload();
+                    }
+                }
+            });
+        }
+
+        function drawBase() {
+            ctx.fillStyle = "brown";
+            ctx.fillRect(baseX, baseY, baseWidth, baseHeight);
+        }
+
+        function detectCollisions() {
+            bullets.forEach((bullet, bulletIndex) => {
+                targets.forEach((target, targetIndex) => {
+                    if (
+                        bullet.x < target.x + targetWidth &&
+                        bullet.x + bulletWidth > target.x &&
+                        bullet.y < target.y + targetHeight &&
+                        bullet.y + bulletHeight > target.y
+                    ) {
+                        bullets.splice(bulletIndex, 1);
+                        targets.splice(targetIndex, 1);
+                    }
+                });
+            });
+
+            targets.forEach((target, targetIndex) => {
+                if (
+                    target.x < baseX + baseWidth &&
+                    target.x + targetWidth > baseX &&
+                    target.y < baseY + baseHeight &&
+                    target.y + targetHeight > baseY
+                ) {
+                    targets.splice(targetIndex, 1);
+                    lives--; // تقليل عدد الفرص عند اصطدام الهدف بالقاعدة
+                    if (lives === 0) {
+                        alert("Game Over");
+                        document.location.reload();
+                    }
+                }
+            });
+        }
+
+        function spawnTarget() {
+            const x = Math.random() * (canvas.width - targetWidth);
+            const y = -targetHeight;
+            targets.push({ x, y });
+        }
+
+        function update() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawTank();
+            drawBullets();
+            drawTargets();
+            drawBase();
+            detectCollisions();
+            ctx.fillStyle = "black";
+            ctx.font = "20px Arial";
+            ctx.fillText("Lives: " + lives, 10, 20);
+
+            if (keys["ArrowLeft"] && tankX > 0) {
+                tankX -= tankSpeed;
+            }
+            if (keys["ArrowRight"] && tankX < canvas.width - tankWidth) {
+                tankX += tankSpeed;
+            }
+        }
+
+        function gameLoop() {
+            update();
+            requestAnimationFrame(gameLoop);
+        }
+
+        document.addEventListener("keydown", (event) => {
+            keys[event.key] = true;
+            if (event.key === " ") {
+                bullets.push({ x: tankX + tankWidth / 2 - bulletWidth / 2, y: tankY });
+            }
+        });
+
+        document.addEventListener("keyup", (event) => {
+            keys[event.key] = false;
+        });
+
+        document.getElementById("leftButton").addEventListener("touchstart", () => {
+            keys["ArrowLeft"] = true;
+        });
+
+        document.getElementById("leftButton").addEventListener("touchend", () => {
+            keys["ArrowLeft"] = false;
+        });
+
+        document.getElementById("rightButton").addEventListener("touchstart", () => {
+            keys["ArrowRight"] = true;
+        });
+
+        document.getElementById("rightButton").addEventListener("touchend", () => {
+            keys["ArrowRight"] = false;
+        });
+
+        document.getElementById("fireButton").addEventListener("touchstart", () => {
+            bullets.push({ x: tankX + tankWidth / 2 - bulletWidth / 2, y: tankY });
+        });
+
+        setInterval(spawnTarget, 2000);
+        gameLoop();
+    </script>
+</body>
+
+</html>
+
